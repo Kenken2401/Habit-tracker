@@ -1,31 +1,42 @@
 import { Habit } from '../types';
 
-const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
-const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
+function isToday(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() &&
+         d.getMonth() === now.getMonth() &&
+         d.getDate() === now.getDate();
+}
 
-/**
- * Returns true if the habit can be logged (never logged, or last logged more than 24h ago)
- */
+function isYesterday(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return d.getFullYear() === yesterday.getFullYear() &&
+         d.getMonth() === yesterday.getMonth() &&
+         d.getDate() === yesterday.getDate();
+}
+
+// Can log if never logged, or hasn't logged today yet
 export function canLog(habit: Habit): boolean {
   if (habit.lastLoggedAt === null) return true;
-  const lastLogged = new Date(habit.lastLoggedAt).getTime();
-  const now = Date.now();
-  return now - lastLogged > TWENTY_FOUR_HOURS;
+  return !isToday(habit.lastLoggedAt);
 }
 
-/**
- * Returns true if the streak should be considered broken
- * (was logged before, but more than 48h have passed without a new log)
- */
+// Streak is broken when at least one full calendar day was skipped
 export function isStreakBroken(habit: Habit): boolean {
-  if (habit.lastLoggedAt === null) return false; // never logged — not yet broken
-  const lastLogged = new Date(habit.lastLoggedAt).getTime();
-  return Date.now() - lastLogged > FORTY_EIGHT_HOURS;
+  if (habit.lastLoggedAt === null) return false;
+  return !isToday(habit.lastLoggedAt) && !isYesterday(habit.lastLoggedAt);
 }
 
-/**
- * Log a habit — returns an updated copy of the habit
- */
+// ms until midnight — the deadline to log before today's streak slot expires
+export function getTimeUntilMidnight(): number {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  return midnight.getTime() - now.getTime();
+}
+
 export function logHabit(habit: Habit): Habit {
   const now = new Date().toISOString();
   let updated: Habit = { ...habit, lastLoggedAt: now };
@@ -45,12 +56,10 @@ export function logHabit(habit: Habit): Habit {
     }
   }
 
-  // Update best streak
   if (updated.streak > updated.bestStreak) {
     updated.bestStreak = updated.streak;
   }
 
-  // Check for level up
   if (
     updated.streak > 0 &&
     updated.streak % 10 === 0 &&
@@ -62,9 +71,6 @@ export function logHabit(habit: Habit): Habit {
   return updated;
 }
 
-/**
- * Update statuses for all habits — call on app load or periodically
- */
 export function updateHabitStatuses(habits: Habit[]): Habit[] {
   return habits.map((habit) => {
     if (
@@ -81,29 +87,4 @@ export function updateHabitStatuses(habits: Habit[]): Habit[] {
     }
     return habit;
   });
-}
-
-/**
- * Returns ms until user can log again (24h after lastLoggedAt)
- * Returns 0 if can already log
- */
-export function getTimeUntilNextWindow(habit: Habit): number {
-  if (habit.lastLoggedAt === null) return 0;
-  const lastLogged = new Date(habit.lastLoggedAt).getTime();
-  const nextWindow = lastLogged + TWENTY_FOUR_HOURS;
-  const remaining = nextWindow - Date.now();
-  return Math.max(0, remaining);
-}
-
-/**
- * Returns ms until streak breaks if not logged
- * (48h after lastLoggedAt, or 48h from createdAt if never logged)
- */
-export function getTimeUntilExpiry(habit: Habit): number {
-  const base = habit.lastLoggedAt
-    ? new Date(habit.lastLoggedAt).getTime()
-    : new Date(habit.createdAt).getTime();
-  const expiry = base + FORTY_EIGHT_HOURS;
-  const remaining = expiry - Date.now();
-  return Math.max(0, remaining);
 }

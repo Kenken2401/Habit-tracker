@@ -1,20 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Habit } from '../types';
-import { canLog, getTimeUntilNextWindow, getTimeUntilExpiry } from '../utils/streak';
+import { canLog, getTimeUntilMidnight } from '../utils/streak';
 
 function formatMs(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  if (h > 0) {
+    return `${h}h ${String(m).padStart(2, '0')}m`;
+  }
+  return `${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
 }
 
-interface CountdownTimerProps {
-  habit: Habit;
-}
-
-export default function CountdownTimer({ habit }: CountdownTimerProps) {
+export default function CountdownTimer({ habit }: { habit: Habit }) {
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -23,42 +22,22 @@ export default function CountdownTimer({ habit }: CountdownTimerProps) {
   }, []);
 
   if (habit.lastLoggedAt === null) {
-    return (
-      <div className="timer timer-pending">
-        Log to start your streak
-      </div>
-    );
+    return <div className="timer timer-pending">Log to start your streak</div>;
   }
 
-  if (habit.status === 'broken' && canLog(habit)) {
-    return (
-      <div className="timer timer-broken">
-        Streak broken — log to start recovery
-      </div>
-    );
+  if (habit.status === 'broken') {
+    return <div className="timer timer-broken">Streak broken — log to start recovery</div>;
   }
 
   if (!canLog(habit)) {
-    const ms = getTimeUntilNextWindow(habit);
-    return (
-      <div className="timer timer-logged">
-        Next window in <span className="timer-value">{formatMs(ms)}</span>
-      </div>
-    );
+    return <div className="timer timer-logged">Logged today ✓ — resets at midnight</div>;
   }
 
-  const ms = getTimeUntilExpiry(habit);
-  if (ms === 0) {
-    return (
-      <div className="timer timer-expired">
-        Window expired
-      </div>
-    );
-  }
-
+  const ms = getTimeUntilMidnight();
   return (
     <div className="timer timer-pending">
-      Log before <span className="timer-value">{formatMs(ms)}</span>
+      <span className="timer-value">{formatMs(ms)}</span>{' '}
+      left before streak resets
     </div>
   );
 }
