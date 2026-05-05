@@ -15,14 +15,10 @@ export function canLog(habit: Habit): boolean {
 
 /**
  * Returns true if the streak should be considered broken
- * (was logged before, but more than 48h have passed without logging)
+ * (was logged before, but more than 48h have passed without a new log)
  */
 export function isStreakBroken(habit: Habit): boolean {
-  if (habit.lastLoggedAt === null) {
-    // Never logged — check 48h from creation
-    const created = new Date(habit.createdAt).getTime();
-    return Date.now() - created > FORTY_EIGHT_HOURS;
-  }
+  if (habit.lastLoggedAt === null) return false; // never logged — not yet broken
   const lastLogged = new Date(habit.lastLoggedAt).getTime();
   return Date.now() - lastLogged > FORTY_EIGHT_HOURS;
 }

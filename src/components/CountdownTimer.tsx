@@ -22,6 +22,14 @@ export default function CountdownTimer({ habit }: CountdownTimerProps) {
     return () => clearInterval(interval);
   }, []);
 
+  if (habit.lastLoggedAt === null) {
+    return (
+      <div className="timer timer-pending">
+        Log to start your streak
+      </div>
+    );
+  }
+
   if (habit.status === 'broken' && canLog(habit)) {
     return (
       <div className="timer timer-broken">
